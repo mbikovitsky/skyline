@@ -26,7 +26,7 @@ const BACKGROUND_COLOR: Color = Color::RGB(50, 60, 57);
 
 const WIDTH: u32 = 128;
 const HEIGHT: u32 = 96;
-const FPS: u32 = 12;
+const FPS: u32 = 30;
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
