@@ -1,7 +1,10 @@
 mod skyline;
 mod util;
 
-use std::time::{Duration, Instant};
+use std::{
+    ops::RangeInclusive,
+    time::{Duration, Instant},
+};
 
 use clap::crate_name;
 use sdl2::{
@@ -16,16 +19,18 @@ use sdl2::{
 use skyline::{Pixel, RandomBuildingGenerator};
 use util::StringErr;
 
-const MAX_BUILDING_HEIGHT: u32 = 50;
-const MAX_BUILDING_WIDTH: u32 = 10;
+const HEIGHT_RANGE: RangeInclusive<u32> = 5..=50;
+const WIDTH_RANGE: RangeInclusive<u32> = 5..=10;
 
 const SKY_COLOR: Color = Color::RGB(63, 63, 116);
 const BORDER_COLOR: Color = Color::BLACK;
 const BACKGROUND_COLOR: Color = Color::RGB(50, 60, 57);
 // const WINDOW_COLOR: Color = Color::RGB(251, 242, 54);
 
-const WIDTH: u32 = 128;
-const HEIGHT: u32 = 96;
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 600;
+const CANVAS_WIDTH: u32 = 128;
+const CANVAS_HEIGHT: u32 = 96;
 const FPS: u32 = 30;
 
 fn main() -> Result<(), String> {
@@ -37,28 +42,29 @@ fn main() -> Result<(), String> {
     sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0");
 
     let window = video_subsystem
-        .window(crate_name!(), 800, 600)
+        .window(crate_name!(), WINDOW_WIDTH, WINDOW_HEIGHT)
         .position_centered()
         .resizable()
         .build()
         .string_err()?;
     let mut canvas = window.into_canvas().present_vsync().build().string_err()?;
-    canvas.set_logical_size(WIDTH, HEIGHT).string_err()?;
+    canvas
+        .set_logical_size(CANVAS_WIDTH, CANVAS_HEIGHT)
+        .string_err()?;
 
     let texture_creator = canvas.texture_creator();
     let mut output_texture = texture_creator
-        .create_texture_streaming(None, WIDTH, HEIGHT)
+        .create_texture_streaming(None, CANVAS_WIDTH, CANVAS_HEIGHT)
         .string_err()?;
 
     let mut framebuffer =
-        Surface::new(WIDTH, HEIGHT, canvas.default_pixel_format())?.into_canvas()?;
+        Surface::new(CANVAS_WIDTH, CANVAS_HEIGHT, canvas.default_pixel_format())?.into_canvas()?;
     framebuffer.set_draw_color(SKY_COLOR);
     framebuffer.clear();
 
-    let mut generator =
-        RandomBuildingGenerator::new(5..=MAX_BUILDING_HEIGHT, 5..=MAX_BUILDING_WIDTH)
-            .map(|building| building.iter_columns())
-            .flatten();
+    let mut generator = RandomBuildingGenerator::new(HEIGHT_RANGE, WIDTH_RANGE)
+        .map(|building| building.iter_columns())
+        .flatten();
 
     let mut event_pump = sdl_context.event_pump()?;
 
