@@ -1,9 +1,9 @@
 mod skyline;
+mod util;
 
 use std::time::{Duration, Instant};
 
 use clap::crate_name;
-
 use sdl2::{
     event::Event,
     pixels::Color,
@@ -12,7 +12,9 @@ use sdl2::{
     surface::Surface,
     sys::SDL_UpperBlit,
 };
+
 use skyline::{Pixel, RandomBuildingGenerator};
+use util::StringErr;
 
 const MAX_BUILDING_HEIGHT: u32 = 50;
 const MAX_BUILDING_WIDTH: u32 = 10;
@@ -26,9 +28,9 @@ const WIDTH: u32 = 128;
 const HEIGHT: u32 = 96;
 const FPS: u32 = 12;
 
-fn main() {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
+fn main() -> Result<(), String> {
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
     // 0 means nearest-neighbour
     // https://wiki.libsdl.org/SDL_HINT_RENDER_SCALE_QUALITY
@@ -39,19 +41,17 @@ fn main() {
         .position_centered()
         .resizable()
         .build()
-        .unwrap();
-    let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_logical_size(WIDTH, HEIGHT).unwrap();
+        .string_err()?;
+    let mut canvas = window.into_canvas().build().string_err()?;
+    canvas.set_logical_size(WIDTH, HEIGHT).string_err()?;
 
     let texture_creator = canvas.texture_creator();
     let mut output_texture = texture_creator
         .create_texture_streaming(None, WIDTH, HEIGHT)
-        .unwrap();
+        .string_err()?;
 
-    let mut framebuffer = Surface::new(WIDTH, HEIGHT, canvas.default_pixel_format())
-        .unwrap()
-        .into_canvas()
-        .unwrap();
+    let mut framebuffer =
+        Surface::new(WIDTH, HEIGHT, canvas.default_pixel_format())?.into_canvas()?;
     framebuffer.set_draw_color(SKY_COLOR);
     framebuffer.clear();
 
@@ -60,7 +60,7 @@ fn main() {
             .map(|building| building.iter_columns())
             .flatten();
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut event_pump = sdl_context.event_pump()?;
 
     let frame_length = Duration::from_secs(1) / FPS;
 
@@ -79,7 +79,7 @@ fn main() {
         }
 
         if last_frame.elapsed() >= frame_length {
-            scroll_left(&mut framebuffer, &mut generator);
+            scroll_left(&mut framebuffer, &mut generator)?;
 
             framebuffer.surface().with_lock(|pixels| {
                 output_texture
@@ -88,18 +88,23 @@ fn main() {
                         pixels,
                         framebuffer.surface().pitch().try_into().unwrap(),
                     )
-                    .unwrap()
-            });
-            canvas.copy(&output_texture, None, None).unwrap();
+                    .string_err()
+            })?;
+            canvas.copy(&output_texture, None, None)?;
             canvas.present();
 
             last_frame = Instant::now();
         }
     }
+
+    Ok(())
 }
 
-fn scroll_left(canvas: &mut Canvas<Surface>, generator: &mut impl Iterator<Item = Vec<Pixel>>) {
-    let (width, height) = canvas.output_size().unwrap();
+fn scroll_left(
+    canvas: &mut Canvas<Surface>,
+    generator: &mut impl Iterator<Item = Vec<Pixel>>,
+) -> Result<(), String> {
+    let (width, height) = canvas.output_size()?;
 
     // Move all columns left by one position
     let source_rect = Rect::new(1, 0, width - 1, height);
@@ -116,13 +121,10 @@ fn scroll_left(canvas: &mut Canvas<Surface>, generator: &mut impl Iterator<Item 
     }
 
     // Clear the rightmost column
-    canvas
-        .surface_mut()
-        .fill_rect(
-            Rect::new((width - 1).try_into().unwrap(), 0, 1, height),
-            SKY_COLOR,
-        )
-        .unwrap();
+    canvas.surface_mut().fill_rect(
+        Rect::new((width - 1).try_into().unwrap(), 0, 1, height),
+        SKY_COLOR,
+    )?;
 
     // Pull a new column from the generator
     let new_column = generator.next().unwrap();
@@ -139,6 +141,8 @@ fn scroll_left(canvas: &mut Canvas<Surface>, generator: &mut impl Iterator<Item 
         let point = Point::new((width - 1).try_into().unwrap(), row.try_into().unwrap());
 
         canvas.set_draw_color(color);
-        canvas.draw_point(point).unwrap();
+        canvas.draw_point(point)?;
     }
+
+    Ok(())
 }
