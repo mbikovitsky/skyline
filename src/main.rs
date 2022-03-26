@@ -7,11 +7,12 @@ use std::{
 };
 
 use clap::crate_name;
+use rand::{distributions::Uniform, prelude::*};
 use sdl2::{
     event::Event,
-    pixels::Color,
+    pixels::{Color, PixelFormatEnum},
     rect::{Point, Rect},
-    render::Canvas,
+    render::{BlendMode, Canvas, Texture, TextureCreator},
     surface::Surface,
     sys::SDL_UpperBlit,
 };
@@ -21,16 +22,19 @@ use util::StringErr;
 
 const HEIGHT_RANGE: Range<u32> = 5..51;
 const WIDTH_RANGE: Range<u32> = 5..11;
+const CANVAS_WIDTH: u32 = 128;
+const CANVAS_HEIGHT: u32 = 96;
+const NUM_STARS: usize = 20;
 
+const TRANSPARENT: Color = Color::RGBA(0, 0, 0, 0);
 const SKY_COLOR: Color = Color::RGB(63, 63, 116);
 const BORDER_COLOR: Color = Color::BLACK;
 const BACKGROUND_COLOR: Color = Color::RGB(50, 60, 57);
+const STAR_COLOR: Color = Color::WHITE;
 // const WINDOW_COLOR: Color = Color::RGB(251, 242, 54);
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
-const CANVAS_WIDTH: u32 = 128;
-const CANVAS_HEIGHT: u32 = 96;
 const FPS: u32 = 30;
 
 fn main() -> Result<(), String> {
@@ -53,14 +57,19 @@ fn main() -> Result<(), String> {
         .string_err()?;
 
     let texture_creator = canvas.texture_creator();
-    let mut output_texture = texture_creator
-        .create_texture_streaming(None, CANVAS_WIDTH, CANVAS_HEIGHT)
-        .string_err()?;
 
-    let mut framebuffer =
-        Surface::new(CANVAS_WIDTH, CANVAS_HEIGHT, canvas.default_pixel_format())?.into_canvas()?;
-    framebuffer.set_draw_color(SKY_COLOR);
-    framebuffer.clear();
+    let sky_texture = create_sky(&texture_creator, CANVAS_WIDTH, CANVAS_HEIGHT)?;
+
+    let mut buildings_canvas = create_surface_canvas(CANVAS_WIDTH, CANVAS_HEIGHT)?;
+
+    let mut buildings_texture = texture_creator
+        .create_texture_streaming(
+            buildings_canvas.surface().pixel_format_enum(),
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT,
+        )
+        .string_err()?;
+    buildings_texture.set_blend_mode(BlendMode::Blend);
 
     let mut generator = skyline(HEIGHT_RANGE, WIDTH_RANGE);
 
@@ -83,18 +92,19 @@ fn main() -> Result<(), String> {
         }
 
         if last_frame.elapsed() >= frame_length {
-            scroll_left(&mut framebuffer, &mut generator)?;
+            scroll_left(&mut buildings_canvas, &mut generator)?;
 
-            framebuffer.surface().with_lock(|pixels| {
-                output_texture
+            buildings_canvas.surface().with_lock(|pixels| {
+                buildings_texture
                     .update(
                         None,
                         pixels,
-                        framebuffer.surface().pitch().try_into().unwrap(),
+                        buildings_canvas.surface().pitch().try_into().unwrap(),
                     )
                     .string_err()
             })?;
-            canvas.copy(&output_texture, None, None)?;
+            canvas.copy(&sky_texture, None, None)?;
+            canvas.copy(&buildings_texture, None, None)?;
             canvas.present();
 
             last_frame = Instant::now();
@@ -102,6 +112,52 @@ fn main() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn create_sky<T>(
+    texture_creator: &TextureCreator<T>,
+    width: u32,
+    height: u32,
+) -> Result<Texture, String> {
+    let mut surface = Surface::new(width, height, PixelFormatEnum::RGBA32)?;
+
+    surface.fill_rect(Rect::new(0, 0, width, height), SKY_COLOR)?;
+
+    let mut canvas = surface.into_canvas()?;
+    canvas.set_draw_color(STAR_COLOR);
+
+    let x_dist = Uniform::new(0, width);
+    let y_dist = Uniform::new(0, height);
+    for (x, y) in thread_rng()
+        .sample_iter(x_dist)
+        .zip(thread_rng().sample_iter(y_dist))
+        .take(NUM_STARS)
+    {
+        canvas.draw_point(Point::new(x.try_into().unwrap(), y.try_into().unwrap()))?;
+    }
+
+    let surface = canvas.into_surface();
+
+    let mut texture = texture_creator
+        .create_texture_from_surface(surface)
+        .string_err()?;
+
+    texture.set_blend_mode(BlendMode::None);
+
+    Ok(texture)
+}
+
+fn create_surface_canvas(width: u32, height: u32) -> Result<Canvas<Surface<'static>>, String> {
+    let mut surface = Surface::new(width, height, PixelFormatEnum::RGBA32)?;
+    surface.set_blend_mode(BlendMode::None)?;
+
+    let mut canvas = surface.into_canvas()?;
+    canvas.set_blend_mode(BlendMode::None);
+
+    canvas.set_draw_color(TRANSPARENT);
+    canvas.clear();
+
+    Ok(canvas)
 }
 
 fn scroll_left(
@@ -127,7 +183,7 @@ fn scroll_left(
     // Clear the rightmost column
     canvas.surface_mut().fill_rect(
         Rect::new((width - 1).try_into().unwrap(), 0, 1, height),
-        SKY_COLOR,
+        TRANSPARENT,
     )?;
 
     // Pull a new column from the generator
