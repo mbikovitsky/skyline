@@ -42,7 +42,7 @@ fn main() -> Result<(), String> {
         .resizable()
         .build()
         .string_err()?;
-    let mut canvas = window.into_canvas().build().string_err()?;
+    let mut canvas = window.into_canvas().present_vsync().build().string_err()?;
     canvas.set_logical_size(WIDTH, HEIGHT).string_err()?;
 
     let texture_creator = canvas.texture_creator();
