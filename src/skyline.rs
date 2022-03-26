@@ -1,4 +1,4 @@
-use std::{iter, ops::RangeInclusive};
+use std::{iter, ops::Range};
 
 use itertools::Itertools;
 use rand::prelude::*;
@@ -43,14 +43,15 @@ impl Building {
 
 #[derive(Debug)]
 struct RandomBuildingGenerator {
-    height_range: RangeInclusive<u32>,
-    width_range: RangeInclusive<u32>,
+    height_range: Range<u32>,
+    width_range: Range<u32>,
     previous_height: u32,
 }
 
 impl RandomBuildingGenerator {
-    pub fn new(height_range: RangeInclusive<u32>, width_range: RangeInclusive<u32>) -> Self {
+    pub fn new(height_range: Range<u32>, width_range: Range<u32>) -> Self {
         assert!(!height_range.is_empty());
+        assert!(height_range.end - height_range.start > 1);
         assert!(!width_range.is_empty());
 
         Self {
@@ -78,8 +79,8 @@ impl Iterator for RandomBuildingGenerator {
 }
 
 pub fn skyline(
-    height_range: RangeInclusive<u32>,
-    width_range: RangeInclusive<u32>,
+    height_range: Range<u32>,
+    width_range: Range<u32>,
 ) -> impl Iterator<Item = Vec<Pixel>> {
     iter::once(vec![])
         .chain(

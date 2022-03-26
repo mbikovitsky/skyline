@@ -2,7 +2,7 @@ mod skyline;
 mod util;
 
 use std::{
-    ops::RangeInclusive,
+    ops::Range,
     time::{Duration, Instant},
 };
 
@@ -19,8 +19,8 @@ use sdl2::{
 use skyline::{skyline, Pixel};
 use util::StringErr;
 
-const HEIGHT_RANGE: RangeInclusive<u32> = 5..=50;
-const WIDTH_RANGE: RangeInclusive<u32> = 5..=10;
+const HEIGHT_RANGE: Range<u32> = 5..51;
+const WIDTH_RANGE: Range<u32> = 5..11;
 
 const SKY_COLOR: Color = Color::RGB(63, 63, 116);
 const BORDER_COLOR: Color = Color::BLACK;
