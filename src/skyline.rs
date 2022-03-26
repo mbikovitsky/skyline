@@ -1,9 +1,10 @@
-use std::ops::RangeInclusive;
+use std::{iter, ops::RangeInclusive};
 
+use itertools::Itertools;
 use rand::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Building {
+struct Building {
     height: u32,
     width: u32,
     // TODO: windows
@@ -28,7 +29,7 @@ impl Building {
             if height == 0 {
                 return vec![];
             }
-            
+
             if col == 0 || col == width - 1 {
                 vec![Pixel::Border; height.try_into().unwrap()]
             } else {
@@ -40,10 +41,11 @@ impl Building {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RandomBuildingGenerator {
+#[derive(Debug)]
+struct RandomBuildingGenerator {
     height_range: RangeInclusive<u32>,
     width_range: RangeInclusive<u32>,
+    previous_height: u32,
 }
 
 impl RandomBuildingGenerator {
@@ -54,6 +56,7 @@ impl RandomBuildingGenerator {
         Self {
             height_range,
             width_range,
+            previous_height: 0,
         }
     }
 }
@@ -62,8 +65,38 @@ impl Iterator for RandomBuildingGenerator {
     type Item = Building;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let height = thread_rng().gen_range(self.height_range.clone());
+        let height = loop {
+            let height = thread_rng().gen_range(self.height_range.clone());
+            if height != self.previous_height {
+                self.previous_height = height;
+                break height;
+            }
+        };
         let width = thread_rng().gen_range(self.width_range.clone());
         Some(Building::new(height, width))
     }
+}
+
+pub fn skyline(
+    height_range: RangeInclusive<u32>,
+    width_range: RangeInclusive<u32>,
+) -> impl Iterator<Item = Vec<Pixel>> {
+    iter::once(vec![])
+        .chain(
+            RandomBuildingGenerator::new(height_range, width_range)
+                .map(|building| building.iter_columns())
+                .flatten(),
+        )
+        .tuple_windows()
+        .filter_map(|(previous, current, next)| {
+            if current.len() >= previous.len() {
+                if current.len() >= next.len() {
+                    Some(current)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
 }

@@ -16,7 +16,7 @@ use sdl2::{
     sys::SDL_UpperBlit,
 };
 
-use skyline::{Pixel, RandomBuildingGenerator};
+use skyline::{skyline, Pixel};
 use util::StringErr;
 
 const HEIGHT_RANGE: RangeInclusive<u32> = 5..=50;
@@ -62,9 +62,7 @@ fn main() -> Result<(), String> {
     framebuffer.set_draw_color(SKY_COLOR);
     framebuffer.clear();
 
-    let mut generator = RandomBuildingGenerator::new(HEIGHT_RANGE, WIDTH_RANGE)
-        .map(|building| building.iter_columns())
-        .flatten();
+    let mut generator = skyline(HEIGHT_RANGE, WIDTH_RANGE);
 
     let mut event_pump = sdl_context.event_pump()?;
 
