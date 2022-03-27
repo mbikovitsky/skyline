@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::crate_name;
-use rand::{distributions::Uniform, prelude::*};
+use rand::prelude::*;
 use sdl2::{
     event::Event,
     pixels::{Color, PixelFormatEnum},
@@ -18,13 +18,14 @@ use sdl2::{
 };
 
 use skyline::{skyline, Pixel};
-use util::StringErr;
+use util::{sample_poisson_disc_2d, StringErr};
 
 const HEIGHT_RANGE: Range<u32> = 5..51;
 const WIDTH_RANGE: Range<u32> = 5..11;
 const CANVAS_WIDTH: u32 = 128;
 const CANVAS_HEIGHT: u32 = 96;
 const NUM_STARS: usize = 20;
+const STAR_MIN_DISTANCE: u32 = 5;
 
 const TRANSPARENT: Color = Color::RGBA(0, 0, 0, 0);
 const SKY_COLOR: Color = Color::RGB(63, 63, 116);
@@ -126,12 +127,8 @@ fn create_sky<T>(
     let mut canvas = surface.into_canvas()?;
     canvas.set_draw_color(STAR_COLOR);
 
-    let x_dist = Uniform::new(0, width);
-    let y_dist = Uniform::new(0, height);
-    for (x, y) in thread_rng()
-        .sample_iter(x_dist)
-        .zip(thread_rng().sample_iter(y_dist))
-        .take(NUM_STARS)
+    for &(x, y) in sample_poisson_disc_2d(&mut thread_rng(), STAR_MIN_DISTANCE, width, height)
+        .choose_multiple(&mut thread_rng(), NUM_STARS)
     {
         canvas.draw_point(Point::new(x.try_into().unwrap(), y.try_into().unwrap()))?;
     }
