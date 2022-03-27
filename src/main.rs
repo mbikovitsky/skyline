@@ -17,11 +17,15 @@ use sdl2::{
     sys::SDL_UpperBlit,
 };
 
-use skyline::{skyline, Pixel};
-use util::{sample_poisson_disc_2d, StringErr};
+use crate::{
+    skyline::{skyline, Pixel},
+    util::{sample_poisson_disc_2d, StringErr},
+};
 
 const HEIGHT_RANGE: Range<u32> = 5..51;
 const WIDTH_RANGE: Range<u32> = 5..11;
+const MAX_WINDOWS: usize = 5;
+const WINDOW_MIN_DISTANCE: u32 = 2;
 const CANVAS_WIDTH: u32 = 128;
 const CANVAS_HEIGHT: u32 = 96;
 const NUM_STARS: usize = 20;
@@ -32,7 +36,7 @@ const SKY_COLOR: Color = Color::RGB(63, 63, 116);
 const BORDER_COLOR: Color = Color::BLACK;
 const BACKGROUND_COLOR: Color = Color::RGB(50, 60, 57);
 const STAR_COLOR: Color = Color::WHITE;
-// const WINDOW_COLOR: Color = Color::RGB(251, 242, 54);
+const WINDOW_COLOR: Color = Color::RGB(251, 242, 54);
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
@@ -72,7 +76,7 @@ fn main() -> Result<(), String> {
         .string_err()?;
     buildings_texture.set_blend_mode(BlendMode::Blend);
 
-    let mut generator = skyline(HEIGHT_RANGE, WIDTH_RANGE);
+    let mut generator = skyline(HEIGHT_RANGE, WIDTH_RANGE, MAX_WINDOWS, WINDOW_MIN_DISTANCE);
 
     let mut event_pump = sdl_context.event_pump()?;
 
@@ -193,6 +197,7 @@ fn scroll_left(
         let color = match pixel {
             Pixel::Background => BACKGROUND_COLOR,
             Pixel::Border => BORDER_COLOR,
+            Pixel::Window => WINDOW_COLOR,
         };
 
         let point = Point::new((width - 1).try_into().unwrap(), row.try_into().unwrap());
