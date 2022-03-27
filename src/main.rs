@@ -19,7 +19,7 @@ use sdl2::{
 
 use crate::{
     skyline::{skyline, Pixel},
-    util::{sample_poisson_disc_2d, StringErr},
+    util::{filled_circle, sample_poisson_disc_2d, StringErr},
 };
 
 const HEIGHT_RANGE: Range<u32> = 5..51;
@@ -30,6 +30,8 @@ const CANVAS_WIDTH: u32 = 128;
 const CANVAS_HEIGHT: u32 = 96;
 const NUM_STARS: usize = 20;
 const STAR_MIN_DISTANCE: u32 = 5;
+const MOON_CENTER: (i32, i32) = (20, 20);
+const MOON_RADIUS: u32 = 12;
 
 const TRANSPARENT: Color = Color::RGBA(0, 0, 0, 0);
 const SKY_COLOR: Color = Color::RGB(63, 63, 116);
@@ -134,6 +136,10 @@ fn create_sky<T>(
     for &(x, y) in sample_poisson_disc_2d(&mut thread_rng(), STAR_MIN_DISTANCE, width, height)
         .choose_multiple(&mut thread_rng(), NUM_STARS)
     {
+        canvas.draw_point(Point::new(x.try_into().unwrap(), y.try_into().unwrap()))?;
+    }
+
+    for (x, y) in filled_circle(MOON_CENTER, MOON_RADIUS) {
         canvas.draw_point(Point::new(x.try_into().unwrap(), y.try_into().unwrap()))?;
     }
 

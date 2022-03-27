@@ -1,5 +1,6 @@
 use std::{error::Error, f64::consts::PI};
 
+use itertools::iproduct;
 use rand::{distributions::Uniform, prelude::*};
 
 const MAX_TEST_SAMPLES: usize = 30;
@@ -95,4 +96,25 @@ pub fn sample_poisson_disc_2d<R: Rng + ?Sized>(
     }
 
     samples
+}
+
+/// Generates the coordinates of all points within a circle of a given `radius`
+/// and centered at `center`.
+pub fn filled_circle(
+    center: (i32, i32),
+    radius: u32,
+) -> impl Iterator<Item = (i32, i32)> {
+    let (center_x, center_y) = center;
+
+    assert!(radius as f64 <= (i32::MAX as f64 / 2.0).sqrt());
+    let radius = radius as i32;
+
+    assert!(center_x <= i32::MAX - radius as i32);
+    assert!(center_x >= i32::MIN + radius as i32);
+    assert!(center_y <= i32::MAX - radius as i32);
+    assert!(center_y >= i32::MIN + radius as i32);
+
+    iproduct!(-radius..=radius, -radius..=radius)
+        .filter(move |(x, y)| x * x + y * y < radius * radius)
+        .map(move |(x, y)| (x + center_x, y + center_y))
 }
